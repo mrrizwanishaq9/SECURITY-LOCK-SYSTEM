@@ -1,0 +1,1005 @@
+# ================================================================
+# 🔐 SECURITY LOCK SYSTEM V23 — 2026 PROFESSIONAL COLAB EDITION
+# ================================================================
+# Features:
+# 🔐 3x3 Pattern Lock
+# 🔢 4–8 Digit PIN Lock
+# 👆 Fingerprint Simulator
+# 📏 Unit Converter
+# 📜 History
+# 📊 Dashboard
+# 🌙 Dark Professional UI
+# ❌ Failed Attempt Lockout
+# 📥 CSV Export
+# 🔄 Reset
+# 🔒 SHA-256 PIN Hashing
+# 🚫 No API Key
+# ================================================================
+
+import os
+import csv
+import json
+import time
+import hashlib
+import secrets
+from datetime import datetime
+from IPython.display import display, HTML, clear_output
+import ipywidgets as widgets
+
+# -----------------------------
+# CONFIGURATION
+# -----------------------------
+APP_NAME = "SECURITY LOCK SYSTEM"
+VERSION = "V23"
+YEAR = "2026"
+
+MAX_ATTEMPTS = 5
+LOCKOUT_SECONDS = 30
+
+DATA_FILE = "/content/security_v23_data.json"
+HISTORY_FILE = "/content/security_v23_history.csv"
+
+# -----------------------------
+# DEFAULT DATA
+# -----------------------------
+DEFAULT_DATA = {
+    "pin_hash": "",
+    "pattern": [],
+    "fingerprint_enabled": True,
+    "failed_attempts": 0,
+    "total_attempts": 0,
+    "successful_unlocks": 0,
+    "lockout_until": 0,
+    "created": datetime.now().isoformat()
+}
+
+# -----------------------------
+# LOAD / SAVE
+# -----------------------------
+def load_data():
+    if os.path.exists(DATA_FILE):
+        try:
+            with open(DATA_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+
+            for k, v in DEFAULT_DATA.items():
+                if k not in data:
+                    data[k] = v
+
+            return data
+        except:
+            pass
+
+    return DEFAULT_DATA.copy()
+
+
+data = load_data()
+
+
+def save_data():
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=4)
+
+
+# -----------------------------
+# HISTORY
+# -----------------------------
+if not os.path.exists(HISTORY_FILE):
+    with open(HISTORY_FILE, "w", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            "Timestamp",
+            "Method",
+            "Status",
+            "Details"
+        ])
+
+
+def add_history(method, status, details=""):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    with open(HISTORY_FILE, "a", newline="", encoding="utf-8") as f:
+        writer = csv.writer(f)
+        writer.writerow([
+            timestamp,
+            method,
+            status,
+            details
+        ])
+
+
+# -----------------------------
+# SECURITY FUNCTIONS
+# -----------------------------
+def hash_pin(pin):
+    return hashlib.sha256(pin.encode("utf-8")).hexdigest()
+
+
+def valid_pin(pin):
+    return pin.isdigit() and 4 <= len(pin) <= 8
+
+
+def is_locked():
+    return time.time() < data.get("lockout_until", 0)
+
+
+def remaining_lockout():
+    return max(
+        0,
+        int(data.get("lockout_until", 0) - time.time())
+    )
+
+
+def register_failed_attempt(method):
+    data["failed_attempts"] += 1
+    data["total_attempts"] += 1
+
+    if data["failed_attempts"] >= MAX_ATTEMPTS:
+        data["lockout_until"] = time.time() + LOCKOUT_SECONDS
+        add_history(
+            method,
+            "LOCKOUT",
+            f"{MAX_ATTEMPTS} failed attempts"
+        )
+    else:
+        add_history(
+            method,
+            "FAILED",
+            f"Attempt {data['failed_attempts']}/{MAX_ATTEMPTS}"
+        )
+
+    save_data()
+
+
+def successful_login(method):
+    data["failed_attempts"] = 0
+    data["lockout_until"] = 0
+    data["total_attempts"] += 1
+    data["successful_unlocks"] += 1
+
+    add_history(
+        method,
+        "SUCCESS",
+        "Authentication successful"
+    )
+
+    save_data()
+
+
+# -----------------------------
+# PROFESSIONAL UI
+# -----------------------------
+display(HTML("""
+<style>
+
+body {
+    background:#0b0f14 !important;
+}
+
+.v23-wrapper {
+    font-family: Arial, sans-serif;
+    background:#0b0f14;
+    color:#e8edf3;
+    padding:20px;
+    border-radius:18px;
+    margin-bottom:15px;
+}
+
+.v23-title {
+    font-size:30px;
+    font-weight:bold;
+    letter-spacing:2px;
+}
+
+.v23-sub {
+    color:#8d99a8;
+    margin-top:5px;
+}
+
+.v23-card {
+    background:#111820;
+    border:1px solid #263241;
+    border-radius:14px;
+    padding:18px;
+    margin-top:12px;
+}
+
+.v23-stat {
+    background:#151e28;
+    border:1px solid #273444;
+    border-radius:12px;
+    padding:15px;
+    text-align:center;
+}
+
+.v23-number {
+    font-size:27px;
+    font-weight:bold;
+}
+
+.v23-label {
+    color:#8d99a8;
+    font-size:13px;
+}
+
+.v23-security {
+    padding:12px;
+    border-radius:10px;
+    background:#151e28;
+}
+
+</style>
+"""))
+
+
+# -----------------------------
+# HEADER
+# -----------------------------
+display(HTML(f"""
+<div class="v23-wrapper">
+
+<div class="v23-title">
+🔐 {APP_NAME} {VERSION}
+</div>
+
+<div class="v23-sub">
+Professional Security Simulator • {YEAR} • Google Colab • No API Key
+</div>
+
+</div>
+"""))
+
+
+# -----------------------------
+# STATUS
+# -----------------------------
+status_box = widgets.Output()
+
+
+def show_status(message, kind="info"):
+    with status_box:
+        clear_output()
+
+        symbols = {
+            "success": "✅",
+            "error": "❌",
+            "warning": "⚠️",
+            "info": "ℹ️"
+        }
+
+        print(symbols.get(kind, "ℹ️"), message)
+
+
+# -----------------------------
+# DASHBOARD
+# -----------------------------
+dashboard = widgets.Output()
+
+
+def refresh_dashboard():
+
+    with dashboard:
+        clear_output()
+
+        attempts = data["total_attempts"]
+        success = data["successful_unlocks"]
+        failed = data["failed_attempts"]
+
+        if attempts > 0:
+            success_rate = round(
+                (success / attempts) * 100,
+                1
+            )
+        else:
+            success_rate = 0
+
+        lock_status = (
+            f"LOCKED • {remaining_lockout()}s"
+            if is_locked()
+            else "SECURE"
+        )
+
+        display(HTML(f"""
+        <div class="v23-card">
+
+        <h2>📊 Security Dashboard</h2>
+
+        <div style="
+        display:grid;
+        grid-template-columns:
+        repeat(4,1fr);
+        gap:10px;
+        ">
+
+        <div class="v23-stat">
+        <div class="v23-number">{attempts}</div>
+        <div class="v23-label">TOTAL ATTEMPTS</div>
+        </div>
+
+        <div class="v23-stat">
+        <div class="v23-number">{success}</div>
+        <div class="v23-label">SUCCESSFUL</div>
+        </div>
+
+        <div class="v23-stat">
+        <div class="v23-number">{failed}</div>
+        <div class="v23-label">FAILED STREAK</div>
+        </div>
+
+        <div class="v23-stat">
+        <div class="v23-number">{success_rate}%</div>
+        <div class="v23-label">SUCCESS RATE</div>
+        </div>
+
+        </div>
+
+        <br>
+
+        <div class="v23-security">
+        🔒 System Status:
+        <b>{lock_status}</b>
+        </div>
+
+        </div>
+        """))
+
+
+# -----------------------------
+# PIN LOCK
+# -----------------------------
+pin_input = widgets.Password(
+    description="PIN:",
+    placeholder="4–8 digits"
+)
+
+pin_button = widgets.Button(
+    description="🔓 Verify PIN",
+    button_style="success"
+)
+
+
+def verify_pin(_):
+
+    if is_locked():
+        show_status(
+            f"System locked. Wait {remaining_lockout()} seconds.",
+            "warning"
+        )
+        return
+
+    pin = pin_input.value.strip()
+
+    if not valid_pin(pin):
+        show_status(
+            "PIN must contain 4–8 digits.",
+            "error"
+        )
+        return
+
+    # No PIN configured
+    if not data["pin_hash"]:
+        data["pin_hash"] = hash_pin(pin)
+        save_data()
+
+        successful_login("PIN SETUP")
+
+        show_status(
+            "PIN created successfully and stored as SHA-256 hash.",
+            "success"
+        )
+
+    else:
+
+        if secrets.compare_digest(
+            hash_pin(pin),
+            data["pin_hash"]
+        ):
+            successful_login("PIN")
+
+            show_status(
+                "PIN authentication successful.",
+                "success"
+            )
+
+        else:
+            register_failed_attempt("PIN")
+
+            show_status(
+                f"Incorrect PIN. "
+                f"{MAX_ATTEMPTS - data['failed_attempts']} attempts remaining.",
+                "error"
+            )
+
+    pin_input.value = ""
+    refresh_dashboard()
+
+
+pin_button.on_click(verify_pin)
+
+
+# -----------------------------
+# PATTERN LOCK
+# -----------------------------
+pattern_state = []
+
+
+pattern_buttons = []
+
+
+def pattern_click(index):
+
+    if len(pattern_state) >= 9:
+        return
+
+    if index not in pattern_state:
+        pattern_state.append(index)
+
+    update_pattern_label()
+
+
+def update_pattern_label():
+
+    pattern_label.value = (
+        "Pattern: "
+        + (
+            " → ".join(str(x + 1) for x in pattern_state)
+            if pattern_state
+            else "None"
+        )
+    )
+
+
+def clear_pattern(_):
+    pattern_state.clear()
+    update_pattern_label()
+
+
+def verify_pattern(_):
+
+    if is_locked():
+        show_status(
+            f"System locked. Wait {remaining_lockout()} seconds.",
+            "warning"
+        )
+        return
+
+    if len(pattern_state) < 4:
+        show_status(
+            "Pattern must contain at least 4 points.",
+            "error"
+        )
+        return
+
+    current = pattern_state.copy()
+
+    if not data["pattern"]:
+        data["pattern"] = current
+        save_data()
+
+        successful_login("PATTERN SETUP")
+
+        show_status(
+            "3×3 pattern created successfully.",
+            "success"
+        )
+
+    else:
+
+        if current == data["pattern"]:
+            successful_login("PATTERN")
+
+            show_status(
+                "Pattern authentication successful.",
+                "success"
+            )
+
+        else:
+            register_failed_attempt("PATTERN")
+
+            show_status(
+                "Incorrect pattern.",
+                "error"
+            )
+
+    pattern_state.clear()
+    update_pattern_label()
+    refresh_dashboard()
+
+
+for i in range(9):
+
+    btn = widgets.Button(
+        description=str(i + 1),
+        layout=widgets.Layout(
+            width="65px",
+            height="55px"
+        )
+    )
+
+    btn.on_click(
+        lambda b, idx=i: pattern_click(idx)
+    )
+
+    pattern_buttons.append(btn)
+
+
+pattern_grid = widgets.GridBox(
+    pattern_buttons,
+    layout=widgets.Layout(
+        grid_template_columns="repeat(3, 65px)",
+        grid_gap="6px"
+    )
+)
+
+pattern_label = widgets.Label(
+    value="Pattern: None"
+)
+
+pattern_clear = widgets.Button(
+    description="Clear"
+)
+
+pattern_verify = widgets.Button(
+    description="🔓 Verify Pattern",
+    button_style="success"
+)
+
+pattern_clear.on_click(clear_pattern)
+pattern_verify.on_click(verify_pattern)
+
+
+# -----------------------------
+# FINGERPRINT SIMULATOR
+# -----------------------------
+fingerprint_button = widgets.Button(
+    description="👆 Scan Fingerprint",
+    button_style="info"
+)
+
+
+def fingerprint_scan(_):
+
+    if is_locked():
+        show_status(
+            f"System locked. Wait {remaining_lockout()} seconds.",
+            "warning"
+        )
+        return
+
+    # Simulation only
+    fingerprint_button.description = "🔄 Scanning..."
+
+    time.sleep(1)
+
+    fingerprint_button.description = "👆 Scan Fingerprint"
+
+    successful_login("FINGERPRINT SIMULATOR")
+
+    show_status(
+        "Fingerprint simulator authentication successful.",
+        "success"
+    )
+
+    refresh_dashboard()
+
+
+fingerprint_button.on_click(fingerprint_scan)
+
+
+# -----------------------------
+# UNIT CONVERTER
+# -----------------------------
+converter_type = widgets.Dropdown(
+    options=[
+        "Length",
+        "Weight",
+        "Temperature",
+        "Data"
+    ],
+    description="Type:"
+)
+
+converter_value = widgets.FloatText(
+    description="Value:"
+)
+
+converter_from = widgets.Dropdown(
+    options=["Meter", "Kilometer", "Centimeter", "Foot"],
+    description="From:"
+)
+
+converter_to = widgets.Dropdown(
+    options=["Meter", "Kilometer", "Centimeter", "Foot"],
+    description="To:"
+)
+
+convert_button = widgets.Button(
+    description="📏 Convert",
+    button_style="info"
+)
+
+converter_output = widgets.Output()
+
+
+def update_units(change=None):
+
+    typ = converter_type.value
+
+    units = {
+
+        "Length": [
+            "Meter",
+            "Kilometer",
+            "Centimeter",
+            "Foot"
+        ],
+
+        "Weight": [
+            "Kilogram",
+            "Gram",
+            "Pound"
+        ],
+
+        "Temperature": [
+            "Celsius",
+            "Fahrenheit",
+            "Kelvin"
+        ],
+
+        "Data": [
+            "Byte",
+            "KB",
+            "MB",
+            "GB"
+        ]
+    }
+
+    converter_from.options = units[typ]
+    converter_to.options = units[typ]
+
+
+converter_type.observe(update_units, names="value")
+
+
+def convert_units(_):
+
+    typ = converter_type.value
+    value = converter_value.value
+    source = converter_from.value
+    target = converter_to.value
+
+    try:
+
+        # Length -> meters
+        if typ == "Length":
+
+            factors = {
+                "Meter": 1,
+                "Kilometer": 1000,
+                "Centimeter": 0.01,
+                "Foot": 0.3048
+            }
+
+            result = value * factors[source] / factors[target]
+
+        # Weight -> grams
+        elif typ == "Weight":
+
+            factors = {
+                "Kilogram": 1000,
+                "Gram": 1,
+                "Pound": 453.59237
+            }
+
+            result = value * factors[source] / factors[target]
+
+        # Temperature
+        elif typ == "Temperature":
+
+            if source == "Celsius":
+                c = value
+            elif source == "Fahrenheit":
+                c = (value - 32) * 5 / 9
+            else:
+                c = value - 273.15
+
+            if target == "Celsius":
+                result = c
+            elif target == "Fahrenheit":
+                result = c * 9 / 5 + 32
+            else:
+                result = c + 273.15
+
+        # Data
+        else:
+
+            factors = {
+                "Byte": 1,
+                "KB": 1024,
+                "MB": 1024 ** 2,
+                "GB": 1024 ** 3
+            }
+
+            result = value * factors[source] / factors[target]
+
+        with converter_output:
+            clear_output()
+            print(
+                f"📏 Result: {value:g} {source} = "
+                f"{result:.6g} {target}"
+            )
+
+        add_history(
+            "CONVERTER",
+            "SUCCESS",
+            f"{value} {source} -> {result:.6g} {target}"
+        )
+
+    except Exception as e:
+
+        with converter_output:
+            clear_output()
+            print("❌ Conversion error:", e)
+
+
+convert_button.on_click(convert_units)
+
+
+# -----------------------------
+# HISTORY VIEW
+# -----------------------------
+history_button = widgets.Button(
+    description="📜 View History"
+)
+
+history_output = widgets.Output()
+
+
+def show_history(_):
+
+    with history_output:
+        clear_output()
+
+        if not os.path.exists(HISTORY_FILE):
+            print("No history found.")
+            return
+
+        with open(
+            HISTORY_FILE,
+            "r",
+            encoding="utf-8"
+        ) as f:
+
+            rows = list(
+                csv.reader(f)
+            )
+
+        print("\n📜 SECURITY HISTORY")
+        print("=" * 80)
+
+        for row in rows[-20:]:
+            print(" | ".join(row))
+
+
+history_button.on_click(show_history)
+
+
+# -----------------------------
+# CSV EXPORT
+# -----------------------------
+export_button = widgets.Button(
+    description="📥 Export CSV",
+    button_style="info"
+)
+
+export_output = widgets.Output()
+
+
+def export_csv(_):
+
+    with export_output:
+        clear_output()
+
+        if os.path.exists(HISTORY_FILE):
+            size = os.path.getsize(HISTORY_FILE)
+
+            print(
+                f"📥 CSV ready: {HISTORY_FILE}"
+            )
+            print(
+                f"📊 File size: {size} bytes"
+            )
+
+            try:
+                from google.colab import files
+                files.download(HISTORY_FILE)
+            except:
+                print(
+                    "Colab download API unavailable. "
+                    "Use the Files panel to download it."
+                )
+
+
+export_button.on_click(export_csv)
+
+
+# -----------------------------
+# RESET
+# -----------------------------
+reset_button = widgets.Button(
+    description="🔄 Reset System",
+    button_style="danger"
+)
+
+reset_output = widgets.Output()
+
+
+def reset_system(_):
+
+    data.clear()
+    data.update(DEFAULT_DATA.copy())
+
+    save_data()
+
+    # Reset history
+    with open(
+        HISTORY_FILE,
+        "w",
+        newline="",
+        encoding="utf-8"
+    ) as f:
+
+        writer = csv.writer(f)
+
+        writer.writerow([
+            "Timestamp",
+            "Method",
+            "Status",
+            "Details"
+        ])
+
+    pattern_state.clear()
+    update_pattern_label()
+
+    pin_input.value = ""
+
+    with reset_output:
+        clear_output()
+        print("🔄 Security system has been reset.")
+
+    show_status(
+        "System reset successfully.",
+        "success"
+    )
+
+    refresh_dashboard()
+
+
+reset_button.on_click(reset_system)
+
+
+# -----------------------------
+# TABS
+# -----------------------------
+pin_panel = widgets.VBox([
+    widgets.HTML("<h3>🔢 PIN LOCK</h3>"),
+    widgets.HTML(
+        "<small>First valid PIN becomes the local PIN. "
+        "Only its SHA-256 hash is stored.</small>"
+    ),
+    pin_input,
+    pin_button
+])
+
+
+pattern_panel = widgets.VBox([
+    widgets.HTML("<h3>🔐 3×3 PATTERN LOCK</h3>"),
+    pattern_grid,
+    pattern_label,
+    widgets.HBox([
+        pattern_clear,
+        pattern_verify
+    ])
+])
+
+
+finger_panel = widgets.VBox([
+    widgets.HTML("<h3>👆 FINGERPRINT SIMULATOR</h3>"),
+    widgets.HTML(
+        "<small>Simulation only — no real biometric sensor "
+        "is accessed by Google Colab.</small>"
+    ),
+    fingerprint_button
+])
+
+
+converter_panel = widgets.VBox([
+    widgets.HTML("<h3>📏 UNIT CONVERTER</h3>"),
+    converter_type,
+    converter_value,
+    converter_from,
+    converter_to,
+    convert_button,
+    converter_output
+])
+
+
+security_tabs = widgets.Tab(
+    children=[
+        pin_panel,
+        pattern_panel,
+        finger_panel,
+        converter_panel
+    ]
+)
+
+security_tabs.set_title(0, "🔢 PIN")
+security_tabs.set_title(1, "🔐 Pattern")
+security_tabs.set_title(2, "👆 Fingerprint")
+security_tabs.set_title(3, "📏 Converter")
+
+
+# -----------------------------
+# ADMIN CONTROLS
+# -----------------------------
+admin_panel = widgets.VBox([
+
+    widgets.HTML(
+        "<h3>⚙️ System Controls</h3>"
+    ),
+
+    widgets.HBox([
+        history_button,
+        export_button,
+        reset_button
+    ]),
+
+    reset_output,
+    history_output,
+    export_output
+])
+
+
+# -----------------------------
+# INITIAL DASHBOARD
+# -----------------------------
+refresh_dashboard()
+
+
+# -----------------------------
+# FINAL DISPLAY
+# -----------------------------
+display(dashboard)
+
+display(status_box)
+
+display(security_tabs)
+
+display(admin_panel)
+
+
+# -----------------------------
+# FOOTER
+# -----------------------------
+display(HTML("""
+<div class="v23-wrapper" style="margin-top:15px;text-align:center">
+
+<b>🔐 SECURITY LOCK SYSTEM V23</b><br>
+
+<span style="color:#8d99a8">
+2026 Professional Colab Edition • Local • No API Key
+</span>
+
+<br><br>
+
+<span style="color:#667586">
+SHA-256 PIN Hashing • Pattern Lock • Fingerprint Simulator
+• Lockout • History • CSV • Converter
+</span>
+
+</div>
+"""))
+
+print("\n🚀 V23 SYSTEM READY")
+print("🔒 Local security simulator initialized.")
+print("🚫 No API key required.")
